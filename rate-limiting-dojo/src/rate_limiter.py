@@ -3,7 +3,6 @@ from typing import Dict, Optional
 
 
 class RateLimiter(ABC):
-
     def __init__(self, window_size: int, max_requests: int, storage: Dict) -> None:
         """
         Initialize the rate limiter with the given window size, maximum requests, and storage.
@@ -18,5 +17,6 @@ class RateLimiter(ABC):
         self.storage = storage
 
     @abstractmethod
-    def handle(self, user_id: str, sequence: int, timestamp: Optional[float] = None) -> str:
-        ...
+    def handle(
+        self, user_id: str, sequence: int, timestamp: Optional[float] = None
+    ) -> str: ...
