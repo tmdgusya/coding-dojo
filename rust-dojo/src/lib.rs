@@ -19,11 +19,16 @@ pub fn read_file(_filename: &str) -> String {
 // 임무 2: read_file_safe, find_first_match 함수를 구현하세요
 // =============================================================================
 pub fn read_file_safe(_filename: &str) -> Result<String, std::io::Error> {
-    todo!("임무 2: Result 타입을 반환하는 안전한 파일 읽기 함수를 구현하세요")
+    return fs::read_to_string(_filename);
 }
 
 pub fn find_first_match<'a>(_contents: &'a str, _query: &str) -> Option<&'a str> {
-    todo!("임무 2: 첫 번째 매칭 라인을 Option으로 반환하세요")
+    for line in _contents.split("\n") {
+        if line.contains(_query) {
+            return Some(line);
+        }
+    }
+    None
 }
 
 // =============================================================================
