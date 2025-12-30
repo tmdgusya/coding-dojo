@@ -8,27 +8,21 @@ use std::fs;
 // &str 은 문자열 슬라이스 임 => 데이터를 가지고 있는게 아니라 어딘가에 있는걸 참조하는 것
 // =============================================================================
 pub fn read_file(_filename: &str) -> String {
-    let result = fs::read_to_string(_filename);
-    return match result {
-        Ok(contents) => contents,
-        Err(_) => String::from("찾을 수 없습니다."),
-    };
+    fs::read_to_string(_filename).unwrap_or_else(|_| String::from("찾을 수 없습니다."))
 }
 
 // =============================================================================
 // 임무 2: read_file_safe, find_first_match 함수를 구현하세요
 // =============================================================================
 pub fn read_file_safe(_filename: &str) -> Result<String, std::io::Error> {
-    return fs::read_to_string(_filename);
+    fs::read_to_string(_filename)
 }
 
 pub fn find_first_match<'a>(_contents: &'a str, _query: &str) -> Option<&'a str> {
-    for line in _contents.split("\n") {
-        if line.contains(_query) {
-            return Some(line);
-        }
-    }
-    None
+    _contents
+        .lines()
+        .find(|&line| line.contains(_query))
+        .map(|v| v)
 }
 
 // =============================================================================
@@ -42,11 +36,27 @@ pub struct Config {
 
 impl Config {
     pub fn build(_args: &[String]) -> Result<Config, &'static str> {
-        todo!("임무 3: 커맨드라인 인자로 Config를 생성하는 함수를 구현하세요")
+        if _args.len() < 3 {
+            return Err("Not enough arguments");
+        }
+
+        let case_sensitive = match _args.get(3) {
+            Some(args) => args == "true",
+            None => true,
+        };
+
+        Ok(Config {
+            query: _args[1].clone(),
+            filename: _args[2].clone(),
+            case_sensitive,
+        })
     }
 
     pub fn display_info(&self) -> String {
-        todo!("임무 3: Config 정보를 문자열로 반환하는 메서드를 구현하세요")
+        format!(
+            "query: {}, filename: {}, case_sensitive: {}",
+            self.query, self.filename, self.case_sensitive
+        )
     }
 }
 
