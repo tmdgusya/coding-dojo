@@ -75,18 +75,25 @@ pub struct LineMatch {
 
 impl LineMatch {
     pub fn new(_line_number: usize, _content: &str) -> Self {
-        todo!("임무 4: LineMatch 생성자를 구현하세요")
+        LineMatch {
+            line_number: _line_number,
+            content: _content.to_owned(),
+        }
     }
 }
 
 impl SearchResult for LineMatch {
     fn format(&self) -> String {
-        todo!("임무 4: SearchResult 트레이트를 구현하세요")
+        format!("[Line{}], {}", self.line_number, self.content)
     }
 }
 
 pub fn format_results<T: SearchResult>(_results: &[T]) -> String {
-    todo!("임무 4: 제네릭 함수를 구현하세요")
+    _results
+        .iter()
+        .map(|result| result.format())
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 // =============================================================================
