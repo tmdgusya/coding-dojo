@@ -98,14 +98,14 @@ impl SharedList {
     ///
     /// 예시: SharedList::prepend(SharedList::new(), 1)
     pub fn prepend(list: Rc<Self>, value: i32) -> Rc<Self> {
-        todo!("임무 2-1: Rc를 사용한 prepend 구현하세요")
+        Rc::new(SharedList::Cons(value, list))
     }
 
     /// 현재 참조 카운트 반환
     ///
     /// 힌트: Rc::strong_count()
     pub fn ref_count(list: &Rc<Self>) -> usize {
-        todo!("임무 2-2: 참조 카운트 반환하세요")
+        Rc::strong_count(list)
     }
 }
 
