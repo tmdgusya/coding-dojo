@@ -19,10 +19,7 @@ pub fn read_file_safe(_filename: &str) -> Result<String, std::io::Error> {
 }
 
 pub fn find_first_match<'a>(_contents: &'a str, _query: &str) -> Option<&'a str> {
-    _contents
-        .lines()
-        .find(|&line| line.contains(_query))
-        .map(|v| v)
+    _contents.lines().find(|&line| line.contains(_query))
 }
 
 // =============================================================================
@@ -101,16 +98,34 @@ pub fn format_results<T: SearchResult>(_results: &[T]) -> String {
 // 생명주기 어노테이션에 주목하세요!
 // =============================================================================
 pub fn search<'a>(_query: &str, _contents: &'a str) -> Vec<&'a str> {
-    todo!("임무 5: 검색 함수를 구현하세요. 생명주기 어노테이션이 필요합니다!")
+    _contents.lines().filter(|v| v.contains(_query)).collect()
 }
 
 pub fn search_case_insensitive<'a>(_query: &str, _contents: &'a str) -> Vec<&'a str> {
-    todo!("임무 5: 대소문자 무시 검색 함수를 구현하세요")
+    _contents
+        .lines()
+        .filter(|v| v.to_lowercase().contains(&_query.to_lowercase()))
+        .collect()
 }
 
 // =============================================================================
 // 최종 임무: run 함수로 모든 것을 통합하세요
 // =============================================================================
 pub fn run(_config: Config) -> Result<(), Box<dyn Error>> {
-    todo!("최종 임무: 전체 로직을 통합하는 run 함수를 구현하세요")
+    let contents = read_file(&_config.filename);
+    let results = if _config.case_sensitive {
+        search(&_config.query, &contents)
+    } else {
+        search_case_insensitive(&_config.query, &contents)
+    };
+
+    let line_matched = results
+        .iter()
+        .enumerate()
+        .map(|(i, line)| LineMatch::new(i, line))
+        .collect::<Vec<LineMatch>>();
+
+    let formatted_results = format_results(&line_matched);
+    println!("{}", formatted_results);
+    Ok(())
 }
