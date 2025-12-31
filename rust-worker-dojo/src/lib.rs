@@ -220,7 +220,20 @@ pub fn thread_greeting(name: String) -> String {
 /// 예시: multi_producer_single_consumer(3, "hello")
 ///       => ["hello", "hello", "hello"] (순서는 다를 수 있음)
 pub fn multi_producer_single_consumer(num_producers: usize, message: &str) -> Vec<String> {
-    todo!("임무 5-1: mpsc 채널로 여러 생산자 구현하세요")
+    let (tx, rx) = mpsc::channel();
+    let mut results = Vec::new();
+    for _ in 0..num_producers {
+        let tx = tx.clone();
+        let c_message = String::from(message);
+        thread::spawn(move || {
+            tx.send(c_message).unwrap();
+        });
+    }
+
+    for recived in rx {
+        results.push(recived.to_owned());
+    }
+    return results;
 }
 
 /// 스레드에서 작업 결과를 채널로 전송
@@ -228,7 +241,21 @@ pub fn multi_producer_single_consumer(num_producers: usize, message: &str) -> Ve
 /// numbers의 각 숫자를 제곱하여 채널로 전송합니다.
 /// 결과를 수집하여 정렬된 Vec으로 반환합니다.
 pub fn channel_map_square(numbers: Vec<i32>) -> Vec<i32> {
-    todo!("임무 5-2: 채널을 사용한 map 연산 구현하세요")
+    let mut results = Vec::new();
+    let (tx, rx) = mpsc::channel();
+
+    for number in numbers {
+        let tx = tx.clone();
+        thread::spawn(move || {
+            tx.send(number.pow(2)).unwrap();
+        });
+    }
+
+    for received in rx {
+        results.push(received);
+    }
+    results.sort();
+    results
 }
 
 // =============================================================================
