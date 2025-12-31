@@ -230,6 +230,8 @@ pub fn multi_producer_single_consumer(num_producers: usize, message: &str) -> Ve
         });
     }
 
+    drop(tx);
+
     for recived in rx {
         results.push(recived.to_owned());
     }
@@ -250,6 +252,8 @@ pub fn channel_map_square(numbers: Vec<i32>) -> Vec<i32> {
             tx.send(number.pow(2)).unwrap();
         });
     }
+
+    drop(tx);
 
     for received in rx {
         results.push(received);
@@ -272,17 +276,19 @@ pub struct Counter {
 
 impl Counter {
     pub fn new() -> Self {
-        todo!("임무 6-1: Counter 생성자 구현하세요")
+        Counter {
+            count: Arc::new(Mutex::new(0)),
+        }
     }
 
     /// 카운터 증가 (스레드 안전)
     pub fn increment(&self) {
-        todo!("임무 6-2: lock()을 사용해 카운터 증가하세요")
+        *self.count.lock().unwrap() += 1;
     }
 
     /// 현재 값 반환
     pub fn get(&self) -> i32 {
-        todo!("임무 6-3: 현재 카운터 값 반환하세요")
+        *self.count.lock().unwrap()
     }
 
     /// Arc 클론 반환 (다른 스레드에서 사용)
@@ -306,7 +312,22 @@ impl Default for Counter {
 ///
 /// 예시: concurrent_increment(4, 100) => 400
 pub fn concurrent_increment(num_threads: usize, increments_per_thread: i32) -> i32 {
-    todo!("임무 6-4: 여러 스레드에서 안전하게 카운터 증가시키세요")
+    let counter = Counter::new();
+    let mut handles = Vec::with_capacity(num_threads);
+    for _ in 0..num_threads {
+        let clone_counter = counter.clone_counter();
+        let worker = thread::spawn(move || {
+            for _ in 0..increments_per_thread {
+                clone_counter.increment();
+            }
+        });
+        handles.push(worker);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+    counter.get()
 }
 
 // =============================================================================
