@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
@@ -132,7 +133,10 @@ where
     T: Fn(u32) -> u32,
 {
     pub fn new(calculation: T) -> Self {
-        todo!("임무 3-1: Cache 생성자 구현하세요")
+        Cache {
+            calculation,
+            values: (RefCell::new(HashMap::new())),
+        }
     }
 
     /// 값을 가져오거나 계산하여 캐시
@@ -142,12 +146,18 @@ where
     ///
     /// 힌트: borrow(), borrow_mut() 사용
     pub fn get(&self, arg: u32) -> u32 {
-        todo!("임무 3-2: 캐시 조회/저장 로직 구현하세요")
+        if self.values.borrow().contains_key(&arg) {
+            return *self.values.borrow().get(&arg).unwrap();
+        }
+
+        let value = (self.calculation)(arg);
+        self.values.borrow_mut().insert(arg, value);
+        value
     }
 
     /// 캐시된 항목 수
     pub fn cached_count(&self) -> usize {
-        todo!("임무 3-3: 캐시된 항목 수 반환하세요")
+        self.values.borrow().len()
     }
 }
 
