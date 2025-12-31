@@ -176,14 +176,33 @@ where
 ///       => 스레드1: 0+1+2=3, 스레드2: 10+11+12=33
 ///       => 결과: [3, 33]
 pub fn parallel_sum(ranges: Vec<(i32, i32)>) -> Vec<i32> {
-    todo!("임무 4-1: 각 범위를 별도 스레드에서 계산하고 결과 수집하세요")
+    let mut handles = Vec::new();
+    let mut results = Vec::new();
+    for (start, count) in ranges {
+        let handle = std::thread::spawn(move || {
+            let mut sum = 0;
+            for i in start..start + count {
+                sum += i
+            }
+            sum
+        });
+        handles.push(handle);
+    }
+
+    handles.into_iter().for_each(|handle| {
+        results.push(handle.join().unwrap());
+    });
+
+    return results;
 }
 
 /// 스레드에서 문자열 생성하여 반환
 ///
 /// 힌트: move 클로저 필요
 pub fn thread_greeting(name: String) -> String {
-    todo!("임무 4-2: 스레드에서 인사말 생성하여 반환하세요")
+    thread::spawn(move || format!("안녕하세요 {}", name))
+        .join()
+        .unwrap()
 }
 
 // =============================================================================
