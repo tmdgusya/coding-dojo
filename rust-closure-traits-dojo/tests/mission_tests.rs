@@ -8,43 +8,73 @@ use std::time::Duration;
 // =============================================================================
 
 #[test]
-fn mission_1_fn_once() {
-    let name = String::from("Rust");
-    let consume = || format!("Hello, {}!", name);
+fn mission_1_1_fn_once_consume() {
+    let data = String::from("consumed");
+    let consume = || data;
 
-    let result = call_once(consume);
-    assert_eq!(result, "Hello, Rust!");
+    let result = consume_and_return(consume);
+    assert_eq!(result, "consumed");
 }
 
 #[test]
-fn mission_1_fn_mut() {
+fn mission_1_1_demo_fn_once() {
+    let result = demo_fn_once();
+    assert_eq!(result, "I will be consumed");
+}
+
+#[test]
+fn mission_1_2_fn_mut_accumulate() {
     let mut count = 0;
     let increment = || {
         count += 1;
         count
     };
 
-    let result = call_mut_twice(increment);
-    assert_eq!(result, 3);
+    let result = call_and_accumulate(increment);
+    assert_eq!(result, 6);
 }
 
 #[test]
-fn mission_1_fn() {
+fn mission_1_2_demo_fn_mut() {
+    let result = demo_fn_mut();
+    assert_eq!(result, 6);
+}
+
+#[test]
+fn mission_1_3_fn_many_times() {
     let value = 42;
     let get_value = || value;
 
-    let results = call_fn_three_times(get_value);
-    assert_eq!(results, vec![42, 42, 42]);
+    let results = call_many_times(get_value, 4);
+    assert_eq!(results, vec![42, 42, 42, 42]);
 }
 
 #[test]
-fn mission_1_calculator() {
-    let add = Calculator::new(|a, b| a + b);
-    assert_eq!(add.calculate(2, 3), 5);
-    assert_eq!(add.calculate(10, 20), 30);
+fn mission_1_3_demo_fn() {
+    let result = demo_fn();
+    assert_eq!(result, vec![20, 20, 20]);
+}
 
-    let mul = Calculator::new(|a, b| a * b);
-    assert_eq!(mul.calculate(3, 4), 12);
+#[test]
+fn mission_1_4_repeater() {
+    let counter = std::sync::atomic::AtomicI32::new(0);
+    let repeater = Repeater::new(
+        || counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1,
+        5,
+    );
+
+    let results = repeater.run();
+    assert_eq!(results.len(), 5);
+}
+
+#[test]
+fn mission_1_5_run_once() {
+    let result: i32 = run_once(|| 42);
+    assert_eq!(result, 42);
+
+    let s = String::from("hello");
+    let result: String = run_once(|| s);
+    assert_eq!(result, "hello");
 }
 
 // =============================================================================
