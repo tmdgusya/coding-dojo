@@ -1,0 +1,6 @@
+[package]
+name = "rust_closure_traits_dojo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
