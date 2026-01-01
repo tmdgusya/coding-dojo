@@ -362,7 +362,7 @@ pub fn share_counter_between_threads() -> i32 {
     let mut handlers = Vec::new();
     for _ in 0..2 {
         let counter = Arc::clone(&counter);
-        let handler = thread::spawn(move || counter.fetch_add(1, Ordering::SeqCst));
+        let handler = thread::spawn(move || counter.fetch_add(1, Ordering::Relaxed));
         handlers.push(handler);
     }
 
@@ -370,7 +370,7 @@ pub fn share_counter_between_threads() -> i32 {
         handler.join().unwrap();
     }
 
-    counter.load(Ordering::SeqCst)
+    counter.load(Ordering::Relaxed)
 }
 
 /// 왜 Rc<T>는 Send가 아닐까요?
@@ -415,19 +415,26 @@ pub fn create_job<F>(f: F) -> Job
 where
     F: FnOnce() + Send + 'static,
 {
-    todo!("임무 5-1: 클로저를 Job으로 변환하세요")
+    Box::new(f)
 }
 
 /// Job을 실행하는 함수
 pub fn execute_job(job: Job) {
-    todo!("임무 5-2: Job을 실행하세요")
+    job()
 }
 
 /// 여러 Job을 스레드에서 실행
 ///
 /// jobs를 받아서 새 스레드에서 모두 실행합니다.
 pub fn execute_jobs_in_thread(jobs: Vec<Job>) {
-    todo!("임무 5-3: 새 스레드에서 모든 Job을 실행하세요")
+    let handlers = jobs
+        .into_iter()
+        .map(|job| thread::spawn(|| execute_job(job)))
+        .collect::<Vec<_>>();
+
+    for handler in handlers {
+        handler.join().unwrap();
+    }
 }
 
 /// 결과를 반환하는 Job
@@ -438,7 +445,7 @@ where
     F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
-    todo!("임무 5-4: 클로저를 스레드에서 실행하고 결과를 반환하세요")
+    thread::spawn(f).join().unwrap()
 }
 
 // =============================================================================
