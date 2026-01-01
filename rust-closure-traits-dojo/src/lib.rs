@@ -222,14 +222,17 @@ impl AnimalShelter {
     ///
     /// 힌트: Box::new()로 감싸서 추가
     pub fn add<A: Animal + 'static>(&mut self, animal: A) {
-        todo!("임무 2-1: 동물을 shelter에 추가하세요")
+        self.animals.push(Box::new(animal));
     }
 
     /// 모든 동물이 말하게 하기
     ///
     /// 각 동물의 speak() 결과를 Vec<String>으로 반환
     pub fn all_speak(&self) -> Vec<String> {
-        todo!("임무 2-2: 모든 동물의 speak() 결과를 수집하세요")
+        self.animals
+            .iter()
+            .map(|animal| animal.speak().to_string())
+            .collect()
     }
 
     pub fn count(&self) -> usize {
@@ -263,7 +266,7 @@ impl DynCalculator {
     }
 
     pub fn calculate(&self, a: i32, b: i32) -> i32 {
-        todo!("임무 2-3: 저장된 클로저를 호출하세요")
+        (self.operation)(a, b)
     }
 
     /// 연산을 다른 것으로 교체
@@ -271,7 +274,7 @@ impl DynCalculator {
     where
         F: Fn(i32, i32) -> i32 + 'static,
     {
-        todo!("임무 2-4: 연산을 새 것으로 교체하세요")
+        self.operation = Box::new(operation);
     }
 }
 
@@ -294,7 +297,7 @@ impl DynCalculator {
 ///
 /// 문자열 리터럴은 프로그램 바이너리에 포함되어 있어서 'static입니다.
 pub fn get_static_str() -> &'static str {
-    todo!("임무 3-1: 'static 문자열을 반환하세요")
+    return "hello";
 }
 
 /// 'static 바운드가 필요한 이유 - 스레드
@@ -309,7 +312,8 @@ pub fn spawn_with_static<T>(value: T) -> T
 where
     T: Send + 'static,
 {
-    todo!("임무 3-2: 값을 스레드로 보냈다가 받아오세요")
+    let f = thread::spawn(|| value);
+    f.join().unwrap()
 }
 
 use std::cell::RefCell;
