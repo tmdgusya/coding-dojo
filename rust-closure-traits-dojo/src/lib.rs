@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread;
 
 // =============================================================================
@@ -357,7 +358,19 @@ pub fn require_sync<T: Sync>(_: &T) {}
 /// Rc<T>는 Send가 아닙니다. (참조 카운트가 atomic이 아님)
 /// Arc<T>를 사용하면 됩니다. (Atomic Reference Count)
 pub fn share_counter_between_threads() -> i32 {
-    todo!("임무 4-1: Arc<Mutex<i32>>를 사용해 두 스레드에서 카운터를 증가시키세요")
+    let counter = Arc::new(AtomicI32::new(0));
+    let mut handlers = Vec::new();
+    for _ in 0..2 {
+        let counter = Arc::clone(&counter);
+        let handler = thread::spawn(move || counter.fetch_add(1, Ordering::SeqCst));
+        handlers.push(handler);
+    }
+
+    for handler in handlers {
+        handler.join().unwrap();
+    }
+
+    counter.load(Ordering::SeqCst)
 }
 
 /// 왜 Rc<T>는 Send가 아닐까요?
