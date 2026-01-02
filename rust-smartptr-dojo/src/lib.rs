@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex, RwLock, mpsc};
+use std::sync::{mpsc, Arc, Mutex, RwLock};
 use std::thread;
 
 // =============================================================================
@@ -13,7 +13,7 @@ use std::thread;
 // =============================================================================
 
 /// 파일 시스템 노드
-/// 
+///
 /// 디렉토리는 자식 노드들을 가질 수 있고,
 /// 모든 노드는 부모를 참조할 수 있습니다 (Weak로).
 #[derive(Debug)]
@@ -27,43 +27,60 @@ pub struct FsNode {
 impl FsNode {
     /// 새 파일 노드 생성
     pub fn new_file(name: &str) -> Rc<Self> {
-        todo!("임무 1-1: 파일 노드 생성")
+        Rc::new(FsNode {
+            name: name.to_owned(),
+            is_dir: false,
+            children: RefCell::new(Vec::new()),
+            parent: RefCell::new(Weak::new()),
+        })
     }
 
     /// 새 디렉토리 노드 생성
     pub fn new_dir(name: &str) -> Rc<Self> {
-        todo!("임무 1-2: 디렉토리 노드 생성")
+        Rc::new(FsNode {
+            name: name.to_owned(),
+            is_dir: true,
+            children: RefCell::new(Vec::new()),
+            parent: RefCell::new(Weak::new()),
+        })
     }
 
     /// 디렉토리에 자식 추가
-    /// 
+    ///
     /// - 부모(self)의 children에 child 추가
     /// - child의 parent를 self로 설정 (Weak 참조)
-    /// 
+    ///
     /// 힌트: Rc::downgrade()로 Weak 생성
     pub fn add_child(parent: &Rc<Self>, child: Rc<FsNode>) {
-        todo!("임무 1-3: 자식 추가 및 부모 연결")
+        parent.children.borrow_mut().push(Rc::clone(&child));
+        *child.parent.borrow_mut() = Rc::downgrade(parent);
     }
 
     /// 부모 노드 이름 반환
-    /// 
+    ///
     /// 부모가 없으면 None
-    /// 
+    ///
     /// 힌트: Weak::upgrade()로 Rc 복원 시도
     pub fn parent_name(&self) -> Option<String> {
-        todo!("임무 1-4: 부모 이름 반환")
+        match self.parent.borrow().upgrade() {
+            Some(parent) => Some(parent.name.to_owned()),
+            None => None,
+        }
     }
 
     /// 전체 경로 반환 (루트부터 현재 노드까지)
-    /// 
+    ///
     /// 예: "/root/docs/readme.txt"
     pub fn full_path(&self) -> String {
-        todo!("임무 1-5: 전체 경로 계산")
+        match self.parent.borrow().upgrade() {
+            Some(parent) => format!("{}/{}", parent.full_path(), self.name),
+            None => format!("/{}", self.name),
+        }
     }
 
     /// 자식 수 반환
     pub fn children_count(&self) -> usize {
-        todo!("임무 1-6: 자식 수 반환")
+        self.children.borrow().iter().count()
     }
 }
 
@@ -105,7 +122,7 @@ impl EventListener for Logger {
 }
 
 /// 이벤트 버스
-/// 
+///
 /// 여러 리스너를 등록하고 이벤트를 브로드캐스트합니다.
 pub struct EventBus {
     listeners: Vec<Rc<RefCell<dyn EventListener>>>,
@@ -117,14 +134,14 @@ impl EventBus {
     }
 
     /// 리스너 등록
-    /// 
+    ///
     /// 힌트: Rc<RefCell<dyn EventListener>>로 다양한 리스너 타입 저장
     pub fn subscribe(&mut self, listener: Rc<RefCell<dyn EventListener>>) {
         todo!("임무 2-2: 리스너 등록")
     }
 
     /// 모든 리스너에게 이벤트 전달
-    /// 
+    ///
     /// 힌트: borrow_mut()로 각 리스너의 on_event 호출
     pub fn publish(&self, event: &str) {
         todo!("임무 2-3: 이벤트 브로드캐스트")
@@ -159,7 +176,7 @@ pub struct CacheNode<V> {
 }
 
 /// LRU 캐시
-/// 
+///
 /// - get: 항목 조회 + 최근 사용으로 이동
 /// - put: 항목 추가 (용량 초과 시 LRU 제거)
 pub struct LruCache<V> {
@@ -222,7 +239,7 @@ impl Connection {
 }
 
 /// 연결 풀
-/// 
+///
 /// 여러 스레드에서 안전하게 연결을 가져오고 반납합니다.
 pub struct ConnectionPool {
     connections: Arc<Mutex<Vec<Connection>>>,
@@ -236,9 +253,9 @@ impl ConnectionPool {
     }
 
     /// 연결 획득
-    /// 
+    ///
     /// 사용 가능한 연결이 있으면 반환, 없으면 None
-    /// 
+    ///
     /// 힌트: in_use = false인 연결 찾아서 true로 변경
     pub fn acquire(&self) -> Option<usize> {
         todo!("임무 4-2: 연결 획득")
@@ -312,7 +329,7 @@ impl ConfigManager {
     }
 
     /// 설정 읽기 (읽기 락)
-    /// 
+    ///
     /// 힌트: read().unwrap()
     pub fn get_config(&self) -> Config {
         todo!("임무 5-3: 설정 읽기")
@@ -324,7 +341,7 @@ impl ConfigManager {
     }
 
     /// 설정 업데이트 (쓰기 락)
-    /// 
+    ///
     /// 힌트: write().unwrap()
     pub fn update<F>(&self, updater: F)
     where
@@ -396,14 +413,14 @@ impl<T: Send + 'static> Default for ResultCollector<T> {
 }
 
 /// 병렬로 작업 실행하고 결과 수집
-/// 
+///
 /// 각 숫자의 제곱을 계산하는 작업을 병렬로 실행합니다.
 pub fn parallel_square(numbers: Vec<i32>) -> Vec<i32> {
     todo!("임무 6-5: 병렬 제곱 계산")
 }
 
 /// 채널을 사용한 병렬 작업
-/// 
+///
 /// 각 작업의 결과를 채널로 전송하고 수집합니다.
 pub fn parallel_with_channel<T, F>(items: Vec<T>, worker: F) -> Vec<String>
 where
