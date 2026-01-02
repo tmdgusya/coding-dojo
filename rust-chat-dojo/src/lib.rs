@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex, RwLock, mpsc};
+use std::sync::{mpsc, Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -41,7 +41,7 @@ impl Message {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         Message {
             sender_id,
             sender_name: sender_name.to_string(),
@@ -61,27 +61,38 @@ pub struct User {
 
 impl User {
     pub fn new(id: UserId, name: &str) -> Rc<RefCell<Self>> {
-        todo!("임무 1-1: User 생성")
+        Rc::new(RefCell::new(User {
+            id: id,
+            name: name.to_string(),
+            joined_rooms: RefCell::new(Vec::new()),
+            inbox: RefCell::new(Vec::new()),
+        }))
     }
 
     pub fn join_room(&self, room: &Rc<RefCell<Room>>) {
-        todo!("임무 1-2: 방 참여 (Weak 참조 저장)")
+        self.joined_rooms.borrow_mut().push(Rc::downgrade(room));
     }
 
     pub fn leave_room(&self, room_id: RoomId) {
-        todo!("임무 1-3: 방 나가기")
+        self.joined_rooms
+            .borrow_mut()
+            .retain(|room| room.upgrade().unwrap().borrow_mut().id != room_id);
     }
 
     pub fn room_count(&self) -> usize {
-        todo!("임무 1-4: 참여 중인 방 수 (유효한 Weak만)")
+        self.joined_rooms
+            .borrow()
+            .iter()
+            .filter(|room| room.upgrade().is_some())
+            .count()
     }
 
     pub fn receive_message(&self, message: Message) {
-        todo!("임무 1-5: 메시지 수신")
+        self.inbox.borrow_mut().push(message);
     }
 
     pub fn get_messages(&self) -> Vec<Message> {
-        todo!("임무 1-6: 받은 메시지 목록")
+        self.inbox.borrow().clone()
     }
 }
 
@@ -95,27 +106,44 @@ pub struct Room {
 
 impl Room {
     pub fn new(id: RoomId, name: &str) -> Rc<RefCell<Self>> {
-        todo!("임무 1-7: Room 생성")
+        Rc::new(RefCell::new(Room {
+            id,
+            name: name.to_owned(),
+            members: RefCell::new(Vec::new()),
+            history: RefCell::new(Vec::new()),
+        }))
     }
 
     pub fn add_member(&self, user: &Rc<RefCell<User>>) {
-        todo!("임무 1-8: 멤버 추가 (Weak 참조 저장)")
+        self.members.borrow_mut().push(Rc::downgrade(user))
     }
 
     pub fn remove_member(&self, user_id: UserId) {
-        todo!("임무 1-9: 멤버 제거")
+        self.members
+            .borrow_mut()
+            .retain(|member| member.upgrade().unwrap().borrow().id != user_id);
     }
 
     pub fn member_count(&self) -> usize {
-        todo!("임무 1-10: 현재 멤버 수 (유효한 Weak만)")
+        self.members
+            .borrow()
+            .iter()
+            .filter(|member| member.upgrade().is_some())
+            .count()
     }
 
     pub fn broadcast(&self, message: Message) {
-        todo!("임무 1-11: 모든 멤버에게 메시지 전송")
+        self.members
+            .borrow()
+            .iter()
+            .filter_map(|member| member.upgrade())
+            .for_each(|member| member.borrow_mut().receive_message(message.clone()));
+
+        self.history.borrow_mut().push(message);
     }
 
     pub fn get_history(&self) -> Vec<Message> {
-        todo!("임무 1-12: 메시지 히스토리")
+        self.history.borrow().clone()
     }
 }
 
