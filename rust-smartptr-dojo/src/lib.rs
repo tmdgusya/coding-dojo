@@ -312,7 +312,7 @@ impl<V: Clone> LruCache<V> {
 // =============================================================================
 
 /// 가상의 데이터베이스 연결
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Connection {
     pub id: usize,
     pub in_use: bool,
@@ -339,7 +339,14 @@ pub struct ConnectionPool {
 impl ConnectionPool {
     /// 풀 생성 (초기 연결 수 지정)
     pub fn new(size: usize) -> Self {
-        todo!("임무 4-1: ConnectionPool 생성")
+        let connections = Arc::new(Mutex::new(Vec::with_capacity(size)));
+        for i in 0..size {
+            connections.lock().unwrap().push(Connection::new(i));
+        }
+        ConnectionPool {
+            connections,
+            max_size: size,
+        }
     }
 
     /// 연결 획득
@@ -348,22 +355,46 @@ impl ConnectionPool {
     ///
     /// 힌트: in_use = false인 연결 찾아서 true로 변경
     pub fn acquire(&self) -> Option<usize> {
-        todo!("임무 4-2: 연결 획득")
+        let mut connections = self.connections.lock().unwrap();
+
+        for (i, conn) in connections.iter_mut().enumerate() {
+            if !conn.in_use {
+                conn.in_use = true;
+                return Some(i);
+            }
+        }
+        None
     }
 
     /// 연결 반납
     pub fn release(&self, conn_id: usize) {
-        todo!("임무 4-3: 연결 반납")
+        let mut connections = self.connections.lock().unwrap();
+
+        if let Some(conn) = connections.get_mut(conn_id) {
+            conn.in_use = false;
+        }
     }
 
     /// 사용 가능한 연결 수
     pub fn available_count(&self) -> usize {
-        todo!("임무 4-4: 사용 가능 연결 수")
+        let connections = self.connections.lock().unwrap();
+        connections.iter().filter(|conn| !conn.in_use).count()
     }
 
     /// 쿼리 실행 (연결 획득 → 실행 → 반납)
     pub fn execute(&self, sql: &str) -> Option<String> {
-        todo!("임무 4-5: 쿼리 실행")
+        let conn_id = self.acquire()?;
+        let result = {
+            let connections = self.connections.lock().unwrap();
+            connections.get(conn_id)?.query(sql)
+        };
+        self.release(conn_id);
+        Some(result)
+    }
+
+    pub fn get_connection(&self, conn_id: usize) -> Option<Connection> {
+        let connections = self.connections.lock().unwrap();
+        connections.get(conn_id).copied()
     }
 
     /// Arc 클론 반환 (다른 스레드에서 사용)
