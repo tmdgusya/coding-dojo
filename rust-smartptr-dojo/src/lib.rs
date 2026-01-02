@@ -130,26 +130,30 @@ pub struct EventBus {
 
 impl EventBus {
     pub fn new() -> Self {
-        todo!("임무 2-1: EventBus 생성")
+        EventBus {
+            listeners: Vec::new(),
+        }
     }
 
     /// 리스너 등록
     ///
     /// 힌트: Rc<RefCell<dyn EventListener>>로 다양한 리스너 타입 저장
     pub fn subscribe(&mut self, listener: Rc<RefCell<dyn EventListener>>) {
-        todo!("임무 2-2: 리스너 등록")
+        self.listeners.push(listener);
     }
 
     /// 모든 리스너에게 이벤트 전달
     ///
     /// 힌트: borrow_mut()로 각 리스너의 on_event 호출
     pub fn publish(&self, event: &str) {
-        todo!("임무 2-3: 이벤트 브로드캐스트")
+        self.listeners
+            .iter()
+            .for_each(|listener| listener.borrow_mut().on_event(event));
     }
 
     /// 등록된 리스너 수
     pub fn listener_count(&self) -> usize {
-        todo!("임무 2-4: 리스너 수 반환")
+        self.listeners.len()
     }
 }
 
