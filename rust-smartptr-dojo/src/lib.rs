@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::sync::{mpsc, Arc, Mutex, RwLock};
@@ -195,22 +195,108 @@ pub struct LruCache<V> {
 impl<V: Clone> LruCache<V> {
     /// 새 캐시 생성
     pub fn new(capacity: usize) -> Self {
-        todo!("임무 3-1: LruCache 생성")
+        LruCache {
+            capacity,
+            map: RefCell::new(HashMap::new()),
+            head: RefCell::new(None),
+            tail: RefCell::new(None),
+        }
     }
 
     /// 값 조회 (사용 시 최근으로 이동)
     pub fn get(&self, key: &str) -> Option<V> {
-        todo!("임무 3-2: 캐시 조회")
+        let node = self.map.borrow().get(key).cloned()?;
+        let value = node.value.clone();
+
+        // 이미 head면 이동 불필요
+        if let Some(ref head) = *self.head.borrow() {
+            if Rc::ptr_eq(head, &node) {
+                return Some(value);
+            }
+        }
+
+        // 노드를 현재 위치에서 분리
+        self.detach(&node);
+        // head로 이동
+        self.attach_head(&node);
+
+        Some(value)
+    }
+
+    /// 노드를 리스트에서 분리
+    fn detach(&self, node: &Rc<CacheNode<V>>) {
+        let prev = node.prev.borrow().clone();
+        let next = node.next.borrow().clone();
+
+        // prev의 next를 현재 노드의 next로
+        if let Some(ref p) = prev {
+            *p.next.borrow_mut() = next.clone();
+        } else {
+            // prev가 없으면 현재 노드가 head였음
+            *self.head.borrow_mut() = next.clone();
+        }
+
+        // next의 prev를 현재 노드의 prev로
+        if let Some(ref n) = next {
+            *n.prev.borrow_mut() = prev.clone();
+        } else {
+            // next가 없으면 현재 노드가 tail이었음
+            *self.tail.borrow_mut() = prev.clone();
+        }
+
+        // 노드의 링크 초기화
+        *node.prev.borrow_mut() = None;
+        *node.next.borrow_mut() = None;
+    }
+
+    /// 노드를 head에 추가
+    fn attach_head(&self, node: &Rc<CacheNode<V>>) {
+        let old_head = self.head.borrow().clone();
+
+        *node.next.borrow_mut() = old_head.clone();
+        *node.prev.borrow_mut() = None;
+
+        if let Some(ref h) = old_head {
+            *h.prev.borrow_mut() = Some(Rc::clone(node));
+        }
+
+        *self.head.borrow_mut() = Some(Rc::clone(node));
+
+        // 리스트가 비어있었으면 tail도 설정
+        if self.tail.borrow().is_none() {
+            *self.tail.borrow_mut() = Some(Rc::clone(node));
+        }
     }
 
     /// 값 저장 (용량 초과 시 LRU 제거)
     pub fn put(&self, key: String, value: V) {
-        todo!("임무 3-3: 캐시 저장")
+        if let Some(existing_node) = self.map.borrow().get(&key).cloned() {
+            self.detach(&existing_node);
+        }
+
+        let node = Rc::new(CacheNode {
+            key: key.clone(),
+            value,
+            prev: RefCell::new(None),
+            next: RefCell::new(None),
+        });
+
+        self.attach_head(&node);
+        self.map.borrow_mut().insert(key, Rc::clone(&node));
+
+        let current_len = self.len();
+        if current_len > self.capacity {
+            let tail_node = self.tail.borrow().clone();
+            if let Some(node) = tail_node {
+                self.map.borrow_mut().remove(&node.key);
+                self.detach(&node);
+            }
+        }
     }
 
     /// 현재 캐시 크기
     pub fn len(&self) -> usize {
-        todo!("임무 3-4: 캐시 크기")
+        self.map.borrow().len()
     }
 
     /// 캐시가 비어있는지
