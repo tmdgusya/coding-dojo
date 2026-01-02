@@ -441,24 +441,28 @@ pub struct ConfigManager {
 impl ConfigManager {
     /// 기본 설정으로 생성
     pub fn new() -> Self {
-        todo!("임무 5-1: ConfigManager 생성")
+        ConfigManager {
+            config: Arc::new(RwLock::new(Config::default())),
+        }
     }
 
     /// 설정으로 생성
     pub fn with_config(config: Config) -> Self {
-        todo!("임무 5-2: 설정과 함께 생성")
+        ConfigManager {
+            config: Arc::new(RwLock::new(config)),
+        }
     }
 
     /// 설정 읽기 (읽기 락)
     ///
     /// 힌트: read().unwrap()
     pub fn get_config(&self) -> Config {
-        todo!("임무 5-3: 설정 읽기")
+        self.config.read().unwrap().clone()
     }
 
     /// debug_mode만 읽기
     pub fn is_debug(&self) -> bool {
-        todo!("임무 5-4: debug_mode 읽기")
+        self.config.read().unwrap().debug_mode
     }
 
     /// 설정 업데이트 (쓰기 락)
@@ -468,7 +472,8 @@ impl ConfigManager {
     where
         F: FnOnce(&mut Config),
     {
-        todo!("임무 5-5: 설정 업데이트")
+        let mut config = self.config.write().unwrap();
+        updater(&mut config);
     }
 
     /// Arc 클론 반환
