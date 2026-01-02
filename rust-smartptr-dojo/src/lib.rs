@@ -503,12 +503,14 @@ pub struct ResultCollector<T> {
 
 impl<T: Send + 'static> ResultCollector<T> {
     pub fn new() -> Self {
-        todo!("임무 6-1: ResultCollector 생성")
+        ResultCollector {
+            results: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     /// 결과 추가 (스레드 안전)
     pub fn add(&self, result: T) {
-        todo!("임무 6-2: 결과 추가")
+        self.results.lock().unwrap().push(result);
     }
 
     /// 모든 결과 반환
@@ -516,12 +518,12 @@ impl<T: Send + 'static> ResultCollector<T> {
     where
         T: Clone,
     {
-        todo!("임무 6-3: 결과 반환")
+        self.results.lock().unwrap().clone()
     }
 
     /// 결과 수
     pub fn count(&self) -> usize {
-        todo!("임무 6-4: 결과 수")
+        self.results.lock().unwrap().len()
     }
 
     /// Arc 클론
@@ -542,7 +544,22 @@ impl<T: Send + 'static> Default for ResultCollector<T> {
 ///
 /// 각 숫자의 제곱을 계산하는 작업을 병렬로 실행합니다.
 pub fn parallel_square(numbers: Vec<i32>) -> Vec<i32> {
-    todo!("임무 6-5: 병렬 제곱 계산")
+    let collector = ResultCollector::new();
+    let handles = numbers
+        .into_iter()
+        .map(|num| {
+            let collector = collector.clone_collector();
+            std::thread::spawn(move || {
+                collector.add(num * num);
+            })
+        })
+        .collect::<Vec<_>>();
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    collector.get_results()
 }
 
 /// 채널을 사용한 병렬 작업
@@ -553,7 +570,23 @@ where
     T: Send + 'static,
     F: Fn(T) -> String + Send + 'static + Clone,
 {
-    todo!("임무 6-6: 채널로 병렬 작업")
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let handles = items
+        .into_iter()
+        .map(|item| {
+            let sender = sender.clone();
+            let worker = worker.clone();
+            std::thread::spawn(move || {
+                sender.send(worker(item)).unwrap();
+            })
+        })
+        .collect::<Vec<_>>();
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    receiver.iter().collect()
 }
 
 // =============================================================================
