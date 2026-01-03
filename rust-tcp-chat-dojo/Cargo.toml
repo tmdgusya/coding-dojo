@@ -1,0 +1,22 @@
+[package]
+name = "rust-tcp-chat-dojo"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "tcp_chat"
+path = "src/lib.rs"
+
+[[bin]]
+name = "echo_server"
+path = "src/bin/echo_server.rs"
+
+[[bin]]
+name = "chat_server"
+path = "src/bin/chat_server.rs"
+
+[[bin]]
+name = "chat_client"
+path = "src/bin/chat_client.rs"
+
+[dev-dependencies]
