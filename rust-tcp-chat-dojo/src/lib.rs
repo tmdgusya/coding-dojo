@@ -11,7 +11,7 @@
 // - 메시지 브로드캐스팅
 // =============================================================================
 
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -44,6 +44,7 @@ pub fn handle_echo_client(stream: TcpStream) -> io::Result<()> {
             break;
         }
         writer.write_all(line.as_bytes())?;
+        writer.write_all(b"\n")?;
         writer.flush()?;
     }
 
@@ -85,7 +86,15 @@ pub fn run_echo_server(addr: &str) -> io::Result<()> {
 /// - thread::spawn()으로 새 스레드 생성
 /// - move 클로저로 stream 소유권 이전
 pub fn run_multi_client_echo_server(addr: &str) -> io::Result<()> {
-    todo!("임무 2: 멀티 클라이언트 Echo 서버 구현")
+    let listener = TcpListener::bind(addr)?;
+    for stream in listener.incoming() {
+        let stream = stream?;
+        std::thread::spawn(move || {
+            handle_echo_client(stream).unwrap();
+        });
+    }
+
+    Ok(())
 }
 
 // =============================================================================
@@ -111,7 +120,14 @@ pub fn new_shared_clients() -> SharedClients {
 /// - 각 클라이언트의 try_clone()으로 스트림 복제
 /// - 실패한 클라이언트는 건너뛰기 (연결이 끊어졌을 수 있음)
 pub fn broadcast(clients: &SharedClients, message: &str, sender_addr: Option<&str>) {
-    todo!("임무 3: 브로드캐스트 구현")
+    clients.lock().unwrap().iter().for_each(|client| {
+        if let Err(e) = client
+            .try_clone()
+            .and_then(|mut cloned| cloned.write_all(message.as_bytes()))
+        {
+            eprintln!("Failed to broadcast message: {}", e);
+        }
+    });
 }
 
 /// 채팅 클라이언트 핸들러
@@ -122,7 +138,36 @@ pub fn broadcast(clients: &SharedClients, message: &str, sender_addr: Option<&st
 /// - 클라이언트 주소를 포함한 메시지 형식: "[addr] message"
 /// - 연결 종료 시 clients에서 제거
 pub fn handle_chat_client(stream: TcpStream, clients: SharedClients) -> io::Result<()> {
-    todo!("임무 3: 채팅 클라이언트 핸들러 구현")
+    stream.try_clone().and_then(|mut cloned| {
+        let addr = cloned.peer_addr()?;
+        let sender_addr = addr.to_string();
+        let mut buffer = vec![0; 1024];
+        loop {
+            match cloned.read(&mut buffer) {
+                Ok(0) => {
+                    eprintln!("Client disconnected");
+                    clients
+                        .lock()
+                        .unwrap()
+                        .retain(|client| client.peer_addr().map(|a| a != addr).unwrap_or(false));
+                    break;
+                }
+                Ok(n) => {
+                    let message = format!(
+                        "[{}] {}\n",
+                        sender_addr,
+                        String::from_utf8_lossy(&buffer[..n]).trim()
+                    );
+                    broadcast(&clients, &message, Some(&sender_addr));
+                }
+                Err(e) => {
+                    eprintln!("Failed to read from client: {}", e);
+                    break;
+                }
+            }
+        }
+        Ok(())
+    })
 }
 
 /// 채팅 서버 실행
@@ -131,7 +176,21 @@ pub fn handle_chat_client(stream: TcpStream, clients: SharedClients) -> io::Resu
 /// - 새 연결 시 clients에 추가
 /// - 각 클라이언트를 별도 스레드에서 처리
 pub fn run_chat_server(addr: &str) -> io::Result<()> {
-    todo!("임무 3: 채팅 서버 구현")
+    let clients: SharedClients = Arc::new(Mutex::new(Vec::new()));
+    let listener = TcpListener::bind(addr)?;
+
+    for stream in listener.incoming() {
+        let clients = clients.clone();
+        let stream = stream?;
+        clients.lock().unwrap().push(stream.try_clone()?);
+        thread::spawn(move || {
+            if let Err(e) = handle_chat_client(stream, clients) {
+                eprintln!("Failed to handle client: {}", e);
+            }
+        });
+    }
+
+    Ok(())
 }
 
 // =============================================================================
