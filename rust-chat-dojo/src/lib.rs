@@ -162,23 +162,42 @@ pub struct SingleThreadChatServer {
 
 impl SingleThreadChatServer {
     pub fn new() -> Self {
-        todo!("임무 2-1: SingleThreadChatServer 생성")
+        SingleThreadChatServer {
+            users: HashMap::new(),
+            rooms: HashMap::new(),
+            next_user_id: 1,
+            next_room_id: 1,
+        }
     }
 
     pub fn create_user(&mut self, name: &str) -> UserId {
-        todo!("임무 2-2: 사용자 생성")
+        let user = User::new(self.next_user_id, name);
+        self.users.insert(self.next_user_id, user);
+        self.next_user_id += 1;
+        self.next_user_id - 1
     }
 
     pub fn create_room(&mut self, name: &str) -> RoomId {
-        todo!("임무 2-3: 방 생성")
+        let room = Room::new(self.next_room_id, name);
+        self.rooms.insert(self.next_room_id, room);
+        self.next_room_id += 1;
+        self.next_room_id - 1
     }
 
     pub fn join_room(&self, user_id: UserId, room_id: RoomId) -> Result<(), String> {
-        todo!("임무 2-4: 사용자를 방에 참여시키기")
+        let user = self.users.get(&user_id).ok_or("User not found")?;
+        let room = self.rooms.get(&room_id).ok_or("Room not found")?;
+        room.borrow_mut().add_member(user);
+        user.borrow_mut().join_room(room);
+        Ok(())
     }
 
     pub fn leave_room(&self, user_id: UserId, room_id: RoomId) -> Result<(), String> {
-        todo!("임무 2-5: 사용자를 방에서 나가게 하기")
+        let user = self.users.get(&user_id).ok_or("User not found")?;
+        let room = self.rooms.get(&room_id).ok_or("Room not found")?;
+        room.borrow_mut().remove_member(user_id);
+        user.borrow_mut().leave_room(room_id);
+        Ok(())
     }
 
     pub fn send_message(
@@ -187,15 +206,24 @@ impl SingleThreadChatServer {
         room_id: RoomId,
         content: &str,
     ) -> Result<(), String> {
-        todo!("임무 2-6: 메시지 보내기")
+        let user = self.users.get(&user_id).ok_or("User not found")?;
+        let room = self.rooms.get(&room_id).ok_or("Room not found")?;
+        let sender_name = user.borrow().name.clone();
+        room.borrow_mut()
+            .broadcast(Message::new(user_id, &sender_name, content));
+        Ok(())
     }
 
     pub fn get_user_messages(&self, user_id: UserId) -> Result<Vec<Message>, String> {
-        todo!("임무 2-7: 사용자의 받은 메시지 조회")
+        let user = self.users.get(&user_id).ok_or("User not found")?;
+        let messages = user.borrow().get_messages();
+        Ok(messages)
     }
 
     pub fn get_room_history(&self, room_id: RoomId) -> Result<Vec<Message>, String> {
-        todo!("임무 2-8: 방의 메시지 히스토리 조회")
+        let room = self.rooms.get(&room_id).ok_or("Room not found")?;
+        let history = room.borrow().get_history();
+        Ok(history)
     }
 
     pub fn user_count(&self) -> usize {
@@ -203,6 +231,7 @@ impl SingleThreadChatServer {
     }
 
     pub fn room_count(&self) -> usize {
+        println!("Rooms: {:?}", self.rooms);
         self.rooms.len()
     }
 }
