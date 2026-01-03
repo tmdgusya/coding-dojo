@@ -1,0 +1,19 @@
+[package]
+name = "fstools"
+version = "0.1.0"
+edition = "2021"
+description = "A file system toolkit for learning Rust - Coding Dojo"
+authors = ["Roach"]
+
+[dependencies]
+
+[dev-dependencies]
+tempfile = "3"
+
+[[bin]]
+name = "fstools"
+path = "src/main.rs"
+
+[lib]
+name = "fstools"
+path = "src/lib.rs"
