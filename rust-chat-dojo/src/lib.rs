@@ -62,7 +62,7 @@ pub struct User {
 impl User {
     pub fn new(id: UserId, name: &str) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(User {
-            id: id,
+            id,
             name: name.to_string(),
             joined_rooms: RefCell::new(Vec::new()),
             inbox: RefCell::new(Vec::new()),
@@ -257,19 +257,23 @@ pub struct ThreadSafeUser {
 
 impl ThreadSafeUser {
     pub fn new(id: UserId, name: &str) -> Self {
-        todo!("임무 3-1: ThreadSafeUser 생성")
+        ThreadSafeUser {
+            id,
+            name: name.to_owned(),
+            inbox: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     pub fn receive_message(&self, message: Message) {
-        todo!("임무 3-2: 메시지 수신 (스레드 안전)")
+        self.inbox.lock().unwrap().push(message)
     }
 
     pub fn get_messages(&self) -> Vec<Message> {
-        todo!("임무 3-3: 받은 메시지 조회")
+        self.inbox.lock().unwrap().clone()
     }
 
     pub fn message_count(&self) -> usize {
-        todo!("임무 3-4: 받은 메시지 수")
+        self.inbox.lock().unwrap().len()
     }
 }
 
@@ -283,35 +287,40 @@ pub struct ThreadSafeRoom {
 
 impl ThreadSafeRoom {
     pub fn new(id: RoomId, name: &str) -> Self {
-        todo!("임무 3-5: ThreadSafeRoom 생성")
+        ThreadSafeRoom {
+            id,
+            name: name.to_owned(),
+            members: RwLock::new(Vec::new()),
+            history: Mutex::new(Vec::new()),
+        }
     }
 
     pub fn add_member(&self, user_id: UserId) {
-        todo!("임무 3-6: 멤버 추가")
+        self.members.write().unwrap().push(user_id);
     }
 
     pub fn remove_member(&self, user_id: UserId) {
-        todo!("임무 3-7: 멤버 제거")
+        self.members.write().unwrap().retain(|id| *id != user_id);
     }
 
     pub fn member_count(&self) -> usize {
-        todo!("임무 3-8: 멤버 수")
+        self.members.read().unwrap().len()
     }
 
     pub fn has_member(&self, user_id: UserId) -> bool {
-        todo!("임무 3-9: 멤버 여부 확인")
+        self.members.read().unwrap().contains(&user_id)
     }
 
     pub fn add_to_history(&self, message: Message) {
-        todo!("임무 3-10: 히스토리에 메시지 추가")
+        self.history.lock().unwrap().push(message);
     }
 
     pub fn get_history(&self) -> Vec<Message> {
-        todo!("임무 3-11: 히스토리 조회")
+        self.history.lock().unwrap().clone()
     }
 
     pub fn get_member_ids(&self) -> Vec<UserId> {
-        todo!("임무 3-12: 멤버 ID 목록")
+        self.members.read().unwrap().clone()
     }
 }
 
@@ -324,23 +333,42 @@ pub struct MultiThreadChatServer {
 
 impl MultiThreadChatServer {
     pub fn new() -> Self {
-        todo!("임무 3-13: MultiThreadChatServer 생성")
+        Self {
+            users: Arc::new(RwLock::new(HashMap::new())),
+            rooms: Arc::new(RwLock::new(HashMap::new())),
+            next_user_id: Arc::new(Mutex::new(0)),
+            next_room_id: Arc::new(Mutex::new(0)),
+        }
     }
 
     pub fn create_user(&self, name: &str) -> UserId {
-        todo!("임무 3-14: 사용자 생성 (스레드 안전)")
+        let mut next_user_id = self.next_user_id.lock().unwrap();
+        let user_id = *next_user_id;
+        *next_user_id += 1;
+
+        let user = Arc::new(ThreadSafeUser::new(user_id, name));
+        self.users.write().unwrap().insert(user_id, user.clone());
+        user_id
     }
 
     pub fn create_room(&self, name: &str) -> RoomId {
-        todo!("임무 3-15: 방 생성 (스레드 안전)")
+        let mut next_room_id = self.next_room_id.lock().unwrap();
+        let room_id = *next_room_id;
+        *next_room_id += 1;
+
+        let room = Arc::new(ThreadSafeRoom::new(room_id, name));
+        self.rooms.write().unwrap().insert(room_id, room.clone());
+        room_id
     }
 
     pub fn join_room(&self, user_id: UserId, room_id: RoomId) -> Result<(), String> {
-        todo!("임무 3-16: 방 참여")
+        self.get_room(room_id).unwrap().add_member(user_id);
+        Ok(())
     }
 
     pub fn leave_room(&self, user_id: UserId, room_id: RoomId) -> Result<(), String> {
-        todo!("임무 3-17: 방 나가기")
+        self.get_room(room_id).unwrap().remove_member(user_id);
+        Ok(())
     }
 
     pub fn send_message(
@@ -349,23 +377,34 @@ impl MultiThreadChatServer {
         room_id: RoomId,
         content: &str,
     ) -> Result<(), String> {
-        todo!("임무 3-18: 메시지 보내기 (모든 멤버에게 전달)")
+        let user = self.get_user(user_id).unwrap();
+        let message = Message::new(user_id, &user.name, content);
+        self.get_room(room_id)
+            .unwrap()
+            .add_to_history(message.clone());
+        let member_ids = self.get_room(room_id).unwrap().get_member_ids();
+        for member_id in member_ids {
+            self.get_user(member_id)
+                .unwrap()
+                .receive_message(message.clone());
+        }
+        Ok(())
     }
 
     pub fn get_user(&self, user_id: UserId) -> Option<Arc<ThreadSafeUser>> {
-        todo!("임무 3-19: 사용자 조회")
+        self.users.read().unwrap().get(&user_id).cloned()
     }
 
     pub fn get_room(&self, room_id: RoomId) -> Option<Arc<ThreadSafeRoom>> {
-        todo!("임무 3-20: 방 조회")
+        self.rooms.read().unwrap().get(&room_id).cloned()
     }
 
     pub fn user_count(&self) -> usize {
-        todo!("임무 3-21: 총 사용자 수")
+        self.users.read().unwrap().len()
     }
 
     pub fn room_count(&self) -> usize {
-        todo!("임무 3-22: 총 방 수")
+        self.rooms.read().unwrap().len()
     }
 
     pub fn clone_server(&self) -> Self {
@@ -415,15 +454,44 @@ pub struct MessageBroker {
 
 impl MessageBroker {
     pub fn new(server: MultiThreadChatServer) -> Self {
-        todo!("임무 4-1: MessageBroker 생성 (워커 스레드 시작)")
+        let (sender, receiver) = mpsc::channel::<ChatCommand>();
+
+        let handle = thread::spawn(move || {
+            for command in receiver {
+                match command {
+                    ChatCommand::SendMessage {
+                        user_id,
+                        room_id,
+                        content,
+                    } => {
+                        let _ = server.send_message(user_id, room_id, &content);
+                    }
+                    ChatCommand::JoinRoom { user_id, room_id } => {
+                        let _ = server.join_room(user_id, room_id);
+                    }
+                    ChatCommand::LeaveRoom { user_id, room_id } => {
+                        let _ = server.leave_room(user_id, room_id);
+                    }
+                    ChatCommand::Shutdown => break,
+                }
+            }
+        });
+
+        MessageBroker {
+            sender,
+            handle: Some(handle),
+        }
     }
 
     pub fn send_command(&self, command: ChatCommand) {
-        todo!("임무 4-2: 커맨드 전송")
+        self.sender.send(command).unwrap();
     }
 
-    pub fn shutdown(self) {
-        todo!("임무 4-3: Graceful shutdown")
+    pub fn shutdown(mut self) {
+        self.sender.send(ChatCommand::Shutdown).unwrap();
+        if let Some(handle) = self.handle.take() {
+            handle.join().unwrap();
+        }
     }
 }
 
@@ -448,31 +516,33 @@ pub struct StatsCollector {
 
 impl StatsCollector {
     pub fn new() -> Self {
-        todo!("임무 5-1: StatsCollector 생성")
+        StatsCollector {
+            stats: Arc::new(RwLock::new(ServerStats::default())),
+        }
     }
 
     pub fn record_message(&self) {
-        todo!("임무 5-2: 메시지 카운트 증가")
+        self.stats.write().unwrap().total_messages += 1;
     }
 
     pub fn record_join(&self) {
-        todo!("임무 5-3: 참여 카운트 증가")
+        self.stats.write().unwrap().total_joins += 1;
     }
 
     pub fn record_leave(&self) {
-        todo!("임무 5-4: 나가기 카운트 증가")
+        self.stats.write().unwrap().total_leaves += 1;
     }
 
     pub fn set_active_users(&self, count: u64) {
-        todo!("임무 5-5: 활성 사용자 수 설정")
+        self.stats.write().unwrap().active_users = count;
     }
 
     pub fn set_active_rooms(&self, count: u64) {
-        todo!("임무 5-6: 활성 방 수 설정")
+        self.stats.write().unwrap().active_rooms = count;
     }
 
     pub fn get_stats(&self) -> ServerStats {
-        todo!("임무 5-7: 통계 조회")
+        self.stats.read().unwrap().clone()
     }
 
     pub fn clone_collector(&self) -> Self {
