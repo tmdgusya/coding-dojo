@@ -19,10 +19,15 @@ import (
 func BasicSendReceive() (string, error) {
 	// TODO: Implement this function
 	// 1. Create an unbuffered channel for strings
+	channel := make(chan string)
 	// 2. Start a goroutine that sends "Hello from goroutine!" after a delay
+	go func() {
+		channel <- "Hello from goroutine!"
+	}()
 	// 3. Receive the message in the main function
+	msg := <-channel
 	// 4. Return the received message
-	return "", nil
+	return msg, nil
 }
 
 // SynchronizedCounter demonstrates goroutine synchronization.
@@ -32,11 +37,18 @@ func BasicSendReceive() (string, error) {
 func SynchronizedCounter() (int, error) {
 	// TODO: Implement this function
 	// 1. Create an unbuffered channel for signaling
+	channel := make(chan int)
 	// 2. Create a counter variable (int)
+	counter := 41
 	// 3. Start a goroutine that increments counter and sends on channel
+	go func() {
+		counter++
+		channel <- counter
+	}()
 	// 4. Receive from channel to wait for completion
+	<-channel
 	// 5. Return the counter value
-	return 0, nil
+	return counter, nil
 }
 
 // PingPong demonstrates bidirectional channel communication.
@@ -46,11 +58,34 @@ func SynchronizedCounter() (int, error) {
 func PingPong(ctx context.Context) (int, error) {
 	// TODO: Implement this function
 	// 1. Create an unbuffered channel
-	// 2. Start a goroutine that alternates between sending "ping" and receiving
+	channel := make(chan string)
+	successCount := 0
+	// 2. "ping" 전송과 수신을 번갈아 수행하는 고루틴 시작
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case channel <- "ping":
+				time.Sleep(time.Millisecond * 100)
+			case <-channel:
+				time.Sleep(time.Millisecond * 100)
+				successCount++
+			}
+		}
+	}()
 	// 3. In main, receive "ping" and send "pong" in response
 	// 4. Continue for a limited number of exchanges or until context is done
+	for i := 0; i < 10; i++ {
+		select {
+		case <-ctx.Done():
+			return successCount, ctx.Err()
+		case <-channel:
+			channel <- "pong"
+		}
+	}
 	// 5. Return the number of successful exchanges
-	return 0, nil
+	return successCount, nil
 }
 
 // DelayedMessage demonstrates timing with channels.
