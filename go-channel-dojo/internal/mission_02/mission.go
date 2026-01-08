@@ -6,6 +6,8 @@
 // - Using cap() and len() functions
 package mission02
 
+import "time"
+
 // BufferedSend demonstrates buffered channel behavior.
 // Sends multiple values to a buffered channel without blocking.
 //
@@ -13,9 +15,14 @@ package mission02
 func BufferedSend() (int, error) {
 	// TODO: Implement this function
 	// 1. Create a buffered channel with capacity 3
+	channel := make(chan int, 3)
 	// 2. Send three values: 1, 2, 3
+	for i := range 3 {
+		channel <- i + 1
+	}
 	// 3. Return the channel length (number of buffered values)
-	return 0, nil
+	close(channel)
+	return len(channel), nil
 }
 
 // BufferCapacity demonstrates cap() and len() functions.
@@ -23,9 +30,13 @@ func BufferedSend() (int, error) {
 func BufferCapacity() (capacity int, length int, err error) {
 	// TODO: Implement this function
 	// 1. Create a buffered channel with capacity 5
+	channel := make(chan string, 5)
 	// 2. Send two values: "first", "second"
+	channel <- "first"
+	channel <- "second"
 	// 3. Return the channel capacity and current length
-	return 0, 0, nil
+	close(channel)
+	return cap(channel), len(channel), nil
 }
 
 // BlockWhenFull demonstrates blocking behavior when buffer is full.
@@ -35,11 +46,25 @@ func BufferCapacity() (capacity int, length int, err error) {
 func BlockWhenFull() (bool, error) {
 	// TODO: Implement this function
 	// 1. Create a buffered channel with capacity 2
+	channel := make(chan string, 2)
 	// 2. Send two values (should not block)
+	for range 2 {
+		channel <- "value"
+	}
 	// 3. Try to send a third value in a goroutine
+	go func() {
+		channel <- "third"
+	}()
 	// 4. After a short delay, receive one value
+	time.Sleep(time.Millisecond)
+	<-channel
 	// 5. Check if the third value was received
-	return false, nil
+	select {
+	case <-channel:
+		return true, nil
+	default:
+		return false, nil
+	}
 }
 
 // PartialDrain demonstrates partial channel drainage.
@@ -49,10 +74,18 @@ func BlockWhenFull() (bool, error) {
 func PartialDrain() ([]int, error) {
 	// TODO: Implement this function
 	// 1. Create a buffered channel with capacity 5
+	channel := make(chan int, 5)
 	// 2. Send values: 10, 20, 30, 40, 50
+	for _, value := range []int{10, 20, 30, 40, 50} {
+		channel <- value
+	}
 	// 3. Receive only the first 3 values
-	// 4. Return the received values
-	return nil, nil
+	received := make([]int, 3)
+	for i := range 3 {
+		received[i] = <-channel
+	}
+	// 4. Return the received value
+	return received, nil
 }
 
 // ChannelOverflow demonstrates what happens when buffer overflows.
@@ -60,9 +93,32 @@ func PartialDrain() ([]int, error) {
 func ChannelOverflow() (sentCount int, receivedCount int, err error) {
 	// TODO: Implement this function
 	// 1. Create a buffered channel with capacity 2
+	channel := make(chan int, 2)
+	done := make(chan int)
+
 	// 2. Send two values in main (no block)
+	for range 2 {
+		channel <- 0
+		sentCount++
+	}
 	// 3. Start a goroutine that tries to send 3 more values
+	go func() {
+		goroutineSent := 0
+		channel <- 1
+		goroutineSent++
+		channel <- 2
+		goroutineSent++
+		channel <- 3
+		goroutineSent++
+		done <- goroutineSent
+	}()
 	// 4. After a delay, receive all 5 values
-	// 5. Return sent count and received count
-	return 0, 0, nil
+	time.Sleep(time.Millisecond)
+	for range 5 {
+		<-channel
+		receivedCount++
+	}
+	// 5. Receive goroutine's sent count and return
+	sentCount += <-done
+	return sentCount, receivedCount, nil
 }
