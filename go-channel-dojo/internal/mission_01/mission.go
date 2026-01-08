@@ -117,9 +117,20 @@ func DelayedMessage(message string, delay time.Duration) (string, error) {
 func WaitGroupPattern() (int, error) {
 	// TODO: Implement this function
 	// 1. Create an unbuffered channel for results
+	channel := make(chan int)
+	successCount := 0
 	// 2. Launch 3 goroutines, each doing a small amount of work
 	// 3. Each goroutine sends its result on the channel
+	for range 3 {
+		go func() {
+			time.Sleep(time.Millisecond * 100)
+			channel <- 1
+		}()
+	}
 	// 4. Receive all results from the channel
+	for range 3 {
+		successCount += <-channel
+	}
 	// 5. Return the count of completed tasks
-	return 0, nil
+	return successCount, nil
 }
