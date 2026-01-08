@@ -98,10 +98,16 @@ func PingPong(ctx context.Context) (int, error) {
 func DelayedMessage(message string, delay time.Duration) (string, error) {
 	// TODO: Implement this function
 	// 1. Create an unbuffered channel for strings
+	channel := make(chan string)
 	// 2. Start a goroutine that waits for 'delay' duration then sends 'message'
+	go func() {
+		time.Sleep(delay)
+		channel <- message
+	}()
 	// 3. Receive the message in the main function
+	msg := <-channel
 	// 4. Return the received message
-	return "", nil
+	return msg, nil
 }
 
 // WaitGroupPattern demonstrates combining channels with sync.WaitGroup.
