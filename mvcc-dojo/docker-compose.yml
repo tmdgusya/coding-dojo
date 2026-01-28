@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: mvcc-dojo-pg
+    environment:
+      POSTGRES_DB: mvcc_dojo
+      POSTGRES_USER: dojo
+      POSTGRES_PASSWORD: dojo
+    ports:
+      - "15432:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "autovacuum=off"
