@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 
 // =============================================================================
@@ -328,6 +328,105 @@ pub fn concurrent_increment(num_threads: usize, increments_per_thread: i32) -> i
         handle.join().unwrap();
     }
     counter.get()
+}
+
+// =============================================================================
+// 임무 6.5: Graceful Shutdown 패턴
+//
+// Worker Pool을 구현하기 전에 반드시 알아야 할 패턴들:
+// 1. 채널 종료 감지 - recv()가 Err을 반환하는 조건
+// 2. Option<T> + take() 패턴 - 소유권을 안전하게 이동
+// 3. Drop 트레이트에서의 정리 작업
+// =============================================================================
+
+/// 간단한 작업 실행기 (Worker Pool의 미니 버전)
+///
+/// 단일 워커 스레드가 채널에서 작업을 받아 실행합니다.
+/// ThreadPool과 달리 워커가 하나뿐이지만, 핵심 패턴은 동일합니다.
+///
+/// ```text
+/// [Main Thread]              [Worker Thread]
+///      |                           |
+///      |-- execute(job1) --------> |  recv() -> Ok(job1) -> 실행
+///      |-- execute(job2) --------> |  recv() -> Ok(job2) -> 실행
+///      |                           |
+///   (drop)                         |
+///      |-- sender drop ----------> |  recv() -> Err! -> 루프 탈출
+///      |-- join() --------------> |  스레드 종료
+///      |                           X
+/// ```
+///
+/// 사용 예시:
+/// ```ignore
+/// let runner = JobRunner::new();
+///
+/// runner.execute(|| println!("작업 1"));
+/// runner.execute(|| println!("작업 2"));
+///
+/// // runner가 drop되면 graceful shutdown
+/// ```
+pub struct JobRunner {
+    sender: Option<mpsc::Sender<Box<dyn FnOnce() + Send + 'static>>>,
+    worker_thread: Option<thread::JoinHandle<()>>,
+}
+
+impl JobRunner {
+    /// 새 JobRunner 생성
+    ///
+    /// 구현 순서:
+    /// 1. mpsc::channel() 호출 - 반환값 순서: (sender, receiver)
+    /// 2. 워커 스레드 생성:
+    ///    - loop 안에서 receiver.recv() 호출
+    ///    - Ok(job) => job() 실행
+    ///    - Err(_) => break (채널 닫힘)
+    /// 3. sender와 thread handle을 Option으로 감싸서 반환
+    ///
+    /// 핵심 개념:
+    /// ```text
+    /// recv()가 Err을 반환하는 조건:
+    /// → 모든 Sender가 drop되었을 때!
+    /// → 이것이 "채널이 닫혔다"의 의미
+    /// ```
+    pub fn new() -> Self {
+        todo!("임무 6.5-1: JobRunner 생성자를 구현하세요")
+    }
+
+    /// 작업 전송
+    ///
+    /// 힌트:
+    /// - self.sender는 Option<Sender<...>>
+    /// - Option 안의 값에 접근: as_ref() 또는 if let Some(s) = &self.sender
+    /// - Sender로 전송: sender.send(Box::new(f))
+    pub fn execute<F>(&self, f: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        todo!("임무 6.5-2: 작업을 채널로 전송하세요")
+    }
+}
+
+impl Drop for JobRunner {
+    /// Graceful shutdown 구현
+    ///
+    /// 반드시 이 순서로:
+    /// 1. sender를 drop → 채널 닫힘 → 워커가 recv()에서 Err 받음
+    /// 2. 워커 스레드 join → 스레드 완전 종료 대기
+    ///
+    /// take() 패턴:
+    /// ```text
+    /// Option<T>에서 값을 꺼내면서 None으로 교체
+    ///
+    /// let mut opt = Some(value);
+    /// let value = opt.take();  // opt는 이제 None
+    /// ```
+    ///
+    /// 왜 take()가 필요한가?
+    /// - Drop::drop(&mut self)는 &mut self만 제공
+    /// - 하지만 join()은 JoinHandle의 소유권이 필요
+    /// - take()로 Option에서 소유권을 꺼내야 함
+    fn drop(&mut self) {
+        todo!("임무 6.5-3: Graceful shutdown을 구현하세요")
+    }
 }
 
 // =============================================================================

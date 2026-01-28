@@ -43,7 +43,7 @@ fn mission_2_shared_list_prepend() {
     let list = SharedList::new();
     let list = SharedList::prepend(list, 1);
     let list = SharedList::prepend(list, 2);
-    
+
     match list.as_ref() {
         SharedList::Cons(val, _) => assert_eq!(*val, 2),
         SharedList::Nil => panic!("Expected Cons"),
@@ -73,7 +73,7 @@ fn mission_2_ref_count() {
 #[test]
 fn mission_3_cache_basic() {
     let cache = Cache::new(|x| x * 2);
-    
+
     assert_eq!(cache.get(5), 10);
     assert_eq!(cache.get(5), 10);
     assert_eq!(cache.cached_count(), 1);
@@ -82,10 +82,8 @@ fn mission_3_cache_basic() {
 #[test]
 fn mission_3_cache_multiple_values() {
     let mut call_count = 0;
-    let cache = Cache::new(|x| {
-        x * x
-    });
-    
+    let cache = Cache::new(|x| x * x);
+
     assert_eq!(cache.get(2), 4);
     assert_eq!(cache.get(3), 9);
     assert_eq!(cache.get(2), 4);
@@ -99,7 +97,7 @@ fn mission_3_cache_multiple_values() {
 #[test]
 fn mission_4_parallel_sum() {
     let results = parallel_sum(vec![(0, 3), (10, 3)]);
-    
+
     assert_eq!(results.len(), 2);
     assert!(results.contains(&3));
     assert!(results.contains(&33));
@@ -118,7 +116,7 @@ fn mission_4_thread_greeting() {
 #[test]
 fn mission_5_multi_producer() {
     let messages = multi_producer_single_consumer(3, "hello");
-    
+
     assert_eq!(messages.len(), 3);
     for msg in messages {
         assert_eq!(msg, "hello");
@@ -129,7 +127,7 @@ fn mission_5_multi_producer() {
 fn mission_5_channel_map() {
     let numbers = vec![1, 2, 3, 4, 5];
     let squared = channel_map_square(numbers);
-    
+
     assert_eq!(squared, vec![1, 4, 9, 16, 25]);
 }
 
@@ -141,7 +139,7 @@ fn mission_5_channel_map() {
 fn mission_6_counter_basic() {
     let counter = Counter::new();
     assert_eq!(counter.get(), 0);
-    
+
     counter.increment();
     counter.increment();
     assert_eq!(counter.get(), 2);
@@ -151,10 +149,10 @@ fn mission_6_counter_basic() {
 fn mission_6_counter_clone() {
     let counter1 = Counter::new();
     let counter2 = counter1.clone_counter();
-    
+
     counter1.increment();
     counter2.increment();
-    
+
     assert_eq!(counter1.get(), 2);
     assert_eq!(counter2.get(), 2);
 }
@@ -166,16 +164,79 @@ fn mission_6_concurrent_increment() {
 }
 
 // =============================================================================
+// Mission 6.5: Graceful Shutdown 패턴
+// =============================================================================
+
+#[test]
+fn mission_6_5_job_runner_basic() {
+    use std::sync::{Arc, Mutex};
+
+    let runner = JobRunner::new();
+    let counter = Arc::new(Mutex::new(0));
+
+    for _ in 0..5 {
+        let counter = Arc::clone(&counter);
+        runner.execute(move || {
+            *counter.lock().unwrap() += 1;
+        });
+    }
+
+    drop(runner);
+
+    assert_eq!(*counter.lock().unwrap(), 5);
+}
+
+#[test]
+fn mission_6_5_job_runner_with_delay() {
+    use std::sync::{Arc, Mutex};
+
+    let runner = JobRunner::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
+
+    for i in 0..3 {
+        let results = Arc::clone(&results);
+        runner.execute(move || {
+            thread::sleep(Duration::from_millis(10));
+            results.lock().unwrap().push(i);
+        });
+    }
+
+    drop(runner);
+
+    let final_results = results.lock().unwrap();
+    assert_eq!(final_results.len(), 3);
+}
+
+#[test]
+fn mission_6_5_graceful_shutdown() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let shutdown_complete = Arc::new(AtomicBool::new(false));
+    let shutdown_flag = Arc::clone(&shutdown_complete);
+
+    {
+        let runner = JobRunner::new();
+        runner.execute(move || {
+            thread::sleep(Duration::from_millis(50));
+            shutdown_flag.store(true, Ordering::SeqCst);
+        });
+    }
+
+    assert!(shutdown_complete.load(Ordering::SeqCst));
+}
+
+// =============================================================================
 // Mission 7: Worker Pool
 // =============================================================================
 
 #[test]
 fn mission_7_thread_pool_basic() {
     use std::sync::{Arc, Mutex};
-    
+
     let pool = ThreadPool::new(4);
     let counter = Arc::new(Mutex::new(0));
-    
+
     for _ in 0..8 {
         let counter = Arc::clone(&counter);
         pool.execute(move || {
@@ -183,19 +244,19 @@ fn mission_7_thread_pool_basic() {
             *num += 1;
         });
     }
-    
+
     drop(pool);
-    
+
     assert_eq!(*counter.lock().unwrap(), 8);
 }
 
 #[test]
 fn mission_7_thread_pool_order_independent() {
     use std::sync::{Arc, Mutex};
-    
+
     let pool = ThreadPool::new(2);
     let results = Arc::new(Mutex::new(Vec::new()));
-    
+
     for i in 0..4 {
         let results = Arc::clone(&results);
         pool.execute(move || {
@@ -203,9 +264,9 @@ fn mission_7_thread_pool_order_independent() {
             results.lock().unwrap().push(i);
         });
     }
-    
+
     drop(pool);
-    
+
     let mut final_results = results.lock().unwrap().clone();
     final_results.sort();
     assert_eq!(final_results, vec![0, 1, 2, 3]);

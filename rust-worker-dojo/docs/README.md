@@ -15,6 +15,7 @@ Rust의 **"Fearless Concurrency"**를 체험하는 수련장입니다.
 | 4 | 스레드 기초 | `thread::spawn`, `join`, `move` |
 | 5 | 메시지 패싱 | `mpsc::channel` - 스레드 간 통신 |
 | 6 | 공유 상태 | `Arc<Mutex<T>>` - 스레드 안전한 공유 |
+| 6.5 | Graceful Shutdown | `recv() Err`, `Option::take()`, `Drop` |
 | 7 | **최종** | Worker Pool 구현 |
 
 ## 선수 지식
@@ -41,6 +42,7 @@ cargo test mission_3    # RefCell
 cargo test mission_4    # Thread
 cargo test mission_5    # Channel
 cargo test mission_6    # Arc + Mutex
+cargo test mission_6_5  # Graceful Shutdown
 cargo test mission_7    # Worker Pool
 ```
 
@@ -164,6 +166,34 @@ for _ in 0..10 {
 **구현할 것**:
 - 스레드 안전한 카운터
 - 공유 데이터 구조
+
+---
+
+### 임무 6.5: Graceful Shutdown 패턴
+
+**목표**: Worker Pool 구현 전에 핵심 패턴 익히기
+
+```text
+[Main Thread]              [Worker Thread]
+     |                           |
+     |-- execute(job1) --------> |  recv() -> Ok(job1) -> 실행
+     |-- execute(job2) --------> |  recv() -> Ok(job2) -> 실행
+     |                           |
+  (drop)                         |
+     |-- sender drop ----------> |  recv() -> Err! -> 루프 탈출
+     |-- join() --------------> |  스레드 종료
+     |                           X
+```
+
+**배울 것**:
+1. `recv()`가 `Err`을 반환하는 조건: 모든 Sender가 drop되었을 때
+2. `Option<T>::take()`: 소유권을 꺼내면서 None으로 교체
+3. `Drop` 트레이트에서 정리 작업 순서
+
+**구현할 것**:
+- `JobRunner` 구조체 (단일 워커)
+- `execute()` 메서드
+- `Drop` 트레이트로 graceful shutdown
 
 ---
 

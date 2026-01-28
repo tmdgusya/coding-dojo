@@ -8,13 +8,14 @@ Rust 동시성(Concurrency)을 배우기 위한 수련장입니다.
 cd rust-worker-dojo
 
 cargo test           # 전체 테스트 (처음엔 모두 실패)
-cargo test mission_1 # Box
-cargo test mission_2 # Rc
-cargo test mission_3 # RefCell
-cargo test mission_4 # Thread
-cargo test mission_5 # Channel
-cargo test mission_6 # Arc + Mutex
-cargo test mission_7 # Worker Pool
+cargo test mission_1   # Box
+cargo test mission_2   # Rc
+cargo test mission_3   # RefCell
+cargo test mission_4   # Thread
+cargo test mission_5   # Channel
+cargo test mission_6   # Arc + Mutex
+cargo test mission_6_5 # Graceful Shutdown (NEW!)
+cargo test mission_7   # Worker Pool
 ```
 
 ## 학습 경로
@@ -27,6 +28,7 @@ cargo test mission_7 # Worker Pool
 | 4 | 스레드 기초 | `thread::spawn`, `join` |
 | 5 | 메시지 패싱 | `mpsc::channel` |
 | 6 | 공유 상태 | `Arc<Mutex<T>>` |
+| 6.5 | Graceful Shutdown | `recv() Err`, `Option::take()` |
 | 7 | **최종** | Worker Pool |
 
 ## 상세 안내
