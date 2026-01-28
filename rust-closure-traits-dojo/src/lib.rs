@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread;
 
 // =============================================================================
@@ -222,14 +223,17 @@ impl AnimalShelter {
     ///
     /// 힌트: Box::new()로 감싸서 추가
     pub fn add<A: Animal + 'static>(&mut self, animal: A) {
-        todo!("임무 2-1: 동물을 shelter에 추가하세요")
+        self.animals.push(Box::new(animal));
     }
 
     /// 모든 동물이 말하게 하기
     ///
     /// 각 동물의 speak() 결과를 Vec<String>으로 반환
     pub fn all_speak(&self) -> Vec<String> {
-        todo!("임무 2-2: 모든 동물의 speak() 결과를 수집하세요")
+        self.animals
+            .iter()
+            .map(|animal| animal.speak().to_string())
+            .collect()
     }
 
     pub fn count(&self) -> usize {
@@ -263,7 +267,7 @@ impl DynCalculator {
     }
 
     pub fn calculate(&self, a: i32, b: i32) -> i32 {
-        todo!("임무 2-3: 저장된 클로저를 호출하세요")
+        (self.operation)(a, b)
     }
 
     /// 연산을 다른 것으로 교체
@@ -271,7 +275,7 @@ impl DynCalculator {
     where
         F: Fn(i32, i32) -> i32 + 'static,
     {
-        todo!("임무 2-4: 연산을 새 것으로 교체하세요")
+        self.operation = Box::new(operation);
     }
 }
 
@@ -294,7 +298,7 @@ impl DynCalculator {
 ///
 /// 문자열 리터럴은 프로그램 바이너리에 포함되어 있어서 'static입니다.
 pub fn get_static_str() -> &'static str {
-    todo!("임무 3-1: 'static 문자열을 반환하세요")
+    return "hello";
 }
 
 /// 'static 바운드가 필요한 이유 - 스레드
@@ -309,7 +313,8 @@ pub fn spawn_with_static<T>(value: T) -> T
 where
     T: Send + 'static,
 {
-    todo!("임무 3-2: 값을 스레드로 보냈다가 받아오세요")
+    let f = thread::spawn(|| value);
+    f.join().unwrap()
 }
 
 use std::cell::RefCell;
@@ -353,7 +358,19 @@ pub fn require_sync<T: Sync>(_: &T) {}
 /// Rc<T>는 Send가 아닙니다. (참조 카운트가 atomic이 아님)
 /// Arc<T>를 사용하면 됩니다. (Atomic Reference Count)
 pub fn share_counter_between_threads() -> i32 {
-    todo!("임무 4-1: Arc<Mutex<i32>>를 사용해 두 스레드에서 카운터를 증가시키세요")
+    let counter = Arc::new(AtomicI32::new(0));
+    let mut handlers = Vec::new();
+    for _ in 0..2 {
+        let counter = Arc::clone(&counter);
+        let handler = thread::spawn(move || counter.fetch_add(1, Ordering::Relaxed));
+        handlers.push(handler);
+    }
+
+    for handler in handlers {
+        handler.join().unwrap();
+    }
+
+    counter.load(Ordering::Relaxed)
 }
 
 /// 왜 Rc<T>는 Send가 아닐까요?
@@ -398,19 +415,26 @@ pub fn create_job<F>(f: F) -> Job
 where
     F: FnOnce() + Send + 'static,
 {
-    todo!("임무 5-1: 클로저를 Job으로 변환하세요")
+    Box::new(f)
 }
 
 /// Job을 실행하는 함수
 pub fn execute_job(job: Job) {
-    todo!("임무 5-2: Job을 실행하세요")
+    job()
 }
 
 /// 여러 Job을 스레드에서 실행
 ///
 /// jobs를 받아서 새 스레드에서 모두 실행합니다.
 pub fn execute_jobs_in_thread(jobs: Vec<Job>) {
-    todo!("임무 5-3: 새 스레드에서 모든 Job을 실행하세요")
+    let handlers = jobs
+        .into_iter()
+        .map(|job| thread::spawn(|| execute_job(job)))
+        .collect::<Vec<_>>();
+
+    for handler in handlers {
+        handler.join().unwrap();
+    }
 }
 
 /// 결과를 반환하는 Job
@@ -421,7 +445,7 @@ where
     F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
-    todo!("임무 5-4: 클로저를 스레드에서 실행하고 결과를 반환하세요")
+    thread::spawn(f).join().unwrap()
 }
 
 // =============================================================================

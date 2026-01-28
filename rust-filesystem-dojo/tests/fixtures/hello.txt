@@ -1,0 +1,3 @@
+Hello, Rust!
+Welcome to the FileSystem Dojo.
+Learn to read and write files with confidence.
