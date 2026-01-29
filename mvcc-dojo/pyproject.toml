@@ -1,0 +1,9 @@
+[project]
+name = "mvcc-dojo"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg2-binary>=2.9.11",
+    "pytest>=9.0.2",
+]
