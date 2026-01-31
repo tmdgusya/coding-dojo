@@ -1,0 +1,11 @@
+[project]
+name = "bm25-dojo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.8.0",
+    "numpy>=2.4.1",
+    "pytest>=9.0.2",
+]
